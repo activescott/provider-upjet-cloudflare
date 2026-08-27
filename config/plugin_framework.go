@@ -1,7 +1,7 @@
 package config
 
 import (
-	"strings"
+	"regexp"
 
 	"github.com/crossplane/upjet/v2/pkg/config"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -17,7 +17,7 @@ import (
 // upjet writes an empty "id" into the Terraform state before the first create
 // and then refreshes, so Read is always called without an identifier and every
 // create fails during the pre-create observe with a message of the form
-// "missing required <resource>_id parameter".
+// "missing required <argument> parameter".
 //
 // The plugin framework runtime is the only one that exposes
 // IsNotFoundDiagnosticFn, which lets those diagnostics be interpreted as "the
@@ -55,21 +55,36 @@ func PluginFrameworkIncludeList() []string {
 	return l
 }
 
+// missingIdentifierMessage matches the generated Cloudflare client's message
+// for an empty path parameter. The argument name varies per resource and ends
+// in either "_id" or "_identifier": "dns_record_id", "setting_id",
+// "rule_identifier", "destination_address_identifier".
+//
+// Matching both suffixes is what makes cloudflare_email_routing_rule and
+// cloudflare_email_routing_address work. Their identifier arguments are
+// rule_identifier and destination_address_identifier, so a pattern written for
+// "_id parameter" alone does not match them and their Read failures stay fatal,
+// which blocks every create.
+//
+// Scoping arguments such as zone_id and account_id match this pattern too. They
+// are populated from the spec, so an empty one is a malformed resource rather
+// than a missing external one; the create that follows the "not found" then
+// fails with the same message. The error surfaces either way, one step later.
+var missingIdentifierMessage = regexp.MustCompile(`missing required [a-z0-9_]*(?:_id|_identifier) parameter`)
+
 // isMissingIdentifierDiagnostic reports whether a diagnostic returned by a
 // Read call means the external resource has no identifier yet, and so does not
 // exist.
 //
 // The Cloudflare provider surfaces this as a request-construction failure
 // rather than a 404, because it never reaches the API: the generated client
-// validates that the path parameter is non-empty and fails first. The message
-// is of the form "missing required dns_record_id parameter", with the argument
-// name varying per resource.
+// validates that the path parameter is non-empty and fails first.
 func isMissingIdentifierDiagnostic(d *tfprotov6.Diagnostic) bool {
 	if d == nil {
 		return false
 	}
 	for _, text := range []string{d.Summary, d.Detail} {
-		if strings.Contains(text, "missing required ") && strings.Contains(text, "_id parameter") {
+		if missingIdentifierMessage.MatchString(text) {
 			return true
 		}
 	}
