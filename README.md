@@ -123,10 +123,24 @@ with the run's own `GITHUB_TOKEN`; no personal access token or registry secret
 is required. Mirroring to a secondary registry is skipped unless the
 `XPKG_MIRROR_ACCESS_ID` and `XPKG_MIRROR_TOKEN` secrets are set.
 
-A package pushed by `GITHUB_TOKEN` is **private on first publish**. Crossplane
-pulls anonymously, so a newly published package must be made public once — under
-the owner's Packages → the package → Package settings → Change visibility — or
-the `Provider` will fail to install with a registry authorization error.
+Crossplane pulls anonymously, so the published package must be public. A package
+created by a workflow in a public repository inherits that visibility, but if the
+`Provider` fails to install with a registry authorization error, check it under
+the owner's Packages → the package → Package settings → Change visibility.
+
+Note that `ghcr.io` returns `401` to an unauthenticated manifest request even for
+public packages, so a bare `curl` is not a visibility test. Fetch an anonymous
+token first:
+
+```console
+tok=$(curl -s "https://ghcr.io/token?scope=repository:<owner>/provider-upjet-cloudflare:pull&service=ghcr.io" | jq -r .token)
+curl -sS -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $tok" \
+  -H "Accept: application/vnd.oci.image.index.v1+json" \
+  "https://ghcr.io/v2/<owner>/provider-upjet-cloudflare/manifests/v0.1.0"
+```
+
+For a genuinely private package it is the token request that fails, not the
+manifest request.
 
 ### Upgrading the Cloudflare Terraform provider
 
