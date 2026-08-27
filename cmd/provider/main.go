@@ -166,10 +166,8 @@ func main() {
 		// use the following WorkspaceStoreOption to enable the shared gRPC mode
 		// terraform.WithProviderRunner(terraform.NewSharedProvider(log, os.Getenv("TERRAFORM_NATIVE_PROVIDER_PATH"), terraform.WithNativeProviderArgs("-debuggable")))
 		WorkspaceStore: terraform.NewWorkspaceStore(log),
-		// Required by the Terraform plugin framework and plugin SDK runtimes.
-		// The Terraform CLI runtime does not use it, so it went unnoticed while
-		// every resource was served through that runtime: a framework
-		// controller panics on the nil store in Connect.
+		// Required by the plugin framework and plugin SDK runtimes; the
+		// Terraform CLI runtime does not use it.
 		OperationTrackerStore: tjcontroller.NewOperationStore(log),
 		SetupFn:               clients.TerraformSetupBuilder(*terraformVersion, *providerSource, *providerVersion),
 		StartWebhooks:         *certsDir != "",
