@@ -92,12 +92,18 @@ appear in a Terraform provider release.
 
 Publishing is therefore a manually triggered, two-step process.
 
-**1. Tag the release.** Run the `Tag` workflow, which creates an annotated tag
-on the ref it is dispatched against (`main` by default):
+**1. Tag the release.**
 
 ```console
-gh workflow run tag.yaml -f version=v0.1.0 -f message="Release v0.1.0"
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
 ```
+
+> The repository also has a `Tag` workflow, but it currently cannot run: it
+> calls `crossplane-contrib/provider-workflows/.github/workflows/tag.yml`, which
+> declares only an `on.workflow_dispatch` trigger and so is not callable as a
+> reusable workflow. Dispatching it fails with `workflow is not reusable as it
+> is missing a 'on.workflow_call' trigger`.
 
 **2. Build and publish the package.** Run the `Publish Provider Package`
 workflow **against the tag created above**, so the build is reproducible from a
@@ -107,9 +113,9 @@ fixed ref:
 gh workflow run publish-provider-package.yml --ref v0.1.0 -f version=v0.1.0
 ```
 
-Both workflows can also be dispatched from the Actions tab in the GitHub web UI
-("Run workflow"). The publish workflow accepts an optional `go-version` input if
-the build needs a Go toolchain other than the default.
+It can also be dispatched from the Actions tab in the GitHub web UI ("Run
+workflow"), selecting the tag as the ref. The workflow accepts an optional
+`go-version` input if the build needs a Go toolchain other than the default.
 
 The publish workflow pushes to `ghcr.io/${{ github.repository_owner }}`, so a
 fork publishes to its own owner's registry with no changes. It authenticates
