@@ -60,11 +60,12 @@ Rules: Edit.
 ### ProviderConfig
 
 Crossplane v2 supports both namespaced and cluster-scoped configuration. Managed
-resources in the namespaced API groups (`*.m.crossplane.io`) reference a
-namespaced `ProviderConfig` or a `ClusterProviderConfig`:
+resources in the namespaced API groups (`*.cloudflare.m.cloudflare.com`, such as
+`dns.cloudflare.m.cloudflare.com`) reference a namespaced `ProviderConfig` or a
+`ClusterProviderConfig`, both served under `cloudflare.m.cloudflare.com`:
 
 ```yaml
-apiVersion: cloudflare.m.crossplane.io/v1beta1
+apiVersion: cloudflare.m.cloudflare.com/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
@@ -78,9 +79,14 @@ spec:
       key: credentials
 ```
 
-The legacy cluster-scoped API group (`cloudflare.crossplane.io/v1beta1`) is also
-served, for resources in the non-namespaced groups. Further examples are under
-[`examples/`](examples/).
+The cluster-scoped managed resources live under `*.cloudflare.crossplane.io` and
+take a cluster-scoped `ProviderConfig` from `cloudflare.cloudflare.com/v1beta1`.
+
+The group names are not guessable from the project name, and they differ between
+the namespaced and cluster-scoped trees. They are defined in
+`apis/namespaced/v1beta1/register.go` and `apis/cluster/v1beta1/register.go`; the
+authoritative list once installed is `kubectl get crd | grep cloudflare`.
+Further examples are under [`examples/`](examples/).
 
 ## Building and publishing a package
 
